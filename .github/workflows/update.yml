@@ -15,9 +15,11 @@ jobs:
         env:
           FORCE: ${{ github.event_name == 'workflow_dispatch' }}
         run: python3 update.py
+      - name: Download icons
+        run: python3 icons.py
       - name: Save snapshot
         run: |
           git config user.name github-actions[bot]
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data.json
-          git diff --cached --quiet || (git commit -m 'Update Rift statistics' && git push)
+          git add data.json icons/
+          git diff --cached --quiet || (git commit -m 'Update Rift statistics and icons' && git push)
