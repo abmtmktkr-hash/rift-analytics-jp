@@ -1,0 +1,15 @@
+name: Test asset catalog
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build test catalog
+        run: python3 assets.py
+      - name: Check catalog
+        run: python3 -c "import json; d=json.load(open('assets-test/catalog.json')); assert all(d[k] for k in ('equip','rune','skill')); print('Catalog validated')"
