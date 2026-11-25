@@ -1,0 +1,34 @@
+name: Save asset icons
+on:
+  workflow_dispatch:
+    inputs:
+      approved:
+        description: '画像の保存・再配布条件を確認済み'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: rift-assets
+  cancel-in-progress: false
+jobs:
+  save:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check catalog
+        run: python3 download_assets.py --catalog assets/catalog.json
+      - name: Save approved icons
+        if: inputs.approved == true
+        run: python3 download_assets.py --catalog assets/catalog.json --output assets --approved
+      - name: Commit icons
+        if: inputs.approved == true
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- assets/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Save asset icons'
+            git push
+          fi
