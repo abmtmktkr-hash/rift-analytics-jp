@@ -1,7 +1,5 @@
 name: Update Rift statistics
 on:
-  schedule:
-    - cron: '30 3 * * *'
   workflow_dispatch:
 permissions:
   contents: write
