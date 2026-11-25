@@ -1,0 +1,45 @@
+name: Switch to Tier only
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Remove detail links and archive workflows
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, hashlib, base64
+          p = pathlib.Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "const wrap=document.createElement('a');wrap.className='champ';wrap.href='./champion.html?id='+encodeURIComponent(r.id);"
+          new = "const wrap=document.createElement('span');wrap.className='champ';"
+          if old not in s and new not in s:
+              raise SystemExit('Unexpected HTML; no changes made')
+          s = s.replace(old, new).replace('a.champ{color:inherit;text-decoration:none}a.champ:hover{text-decoration:underline}', '')
+          for tag, directive in [('script','script-src'),('style','style-src')]:
+              body = re.search(r'<'+tag+r'>(.*?)</'+tag+r'>', s, re.S).group(1)
+              digest = base64.b64encode(hashlib.sha256(body.encode()).digest()).decode()
+              s, n = re.subn(directive+r" 'sha256-[^']+'", directive+" 'sha256-"+digest+"'", s)
+              assert n == 1
+          assert 'champion.html?id=' not in s
+          p.write_text(s, encoding='utf-8')
+          archive = pathlib.Path('disabled-workflows')
+          archive.mkdir(exist_ok=True)
+          for name in ['publish-details.yml','test-details.yml','save-assets.yml','test-assets.yml','upgrade-icons.yml','upgrade-search.yml']:
+              src = pathlib.Path('.github/workflows') / name
+              if src.exists():
+                  dest = archive / name
+                  if dest.exists():
+                      raise SystemExit('Archive already exists: '+name)
+                  src.rename(dest)
+                  print('Archived:', name)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html .github/workflows disabled-workflows
+          if ! git diff --cached --quiet; then
+            git commit -m 'Switch to Tier-only mode'
+            git push
+          fi
