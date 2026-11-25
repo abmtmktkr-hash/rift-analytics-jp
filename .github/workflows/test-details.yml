@@ -1,0 +1,25 @@
+name: Test champion details
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rift-details-test
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Collect three champions
+        run: python3 details.py --limit 3
+      - name: Save test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: champion-details-test
+          path: details/*.json
+          if-no-files-found: error
+          retention-days: 7
