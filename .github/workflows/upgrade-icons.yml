@@ -1,0 +1,18 @@
+name: Upgrade champion icons
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply icon layout
+        run: python3 upgrade_icons.py
+      - name: Commit updated page
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add champion.html
+          git diff --cached --quiet || (git commit -m 'Add local asset icon layout' && git push)
