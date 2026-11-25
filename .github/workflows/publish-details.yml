@@ -1,0 +1,59 @@
+name: Update and publish champion details
+on:
+  workflow_dispatch:
+    inputs:
+      approved:
+        description: 'APIの全件取得・再配布条件を確認済み'
+        type: boolean
+        required: true
+        default: false
+  schedule:
+    - cron: '15 4 * * *'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: rift-update
+  cancel-in-progress: false
+jobs:
+  update:
+    if: (github.event_name == 'workflow_dispatch' && inputs.approved == true) || (github.event_name == 'schedule' && vars.DETAILS_APPROVED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect details (14-day cache)
+        run: python3 details.py --all
+      - name: Save validated data
+        if: always() && !cancelled()
+        run: |
+          if [ ! -d details ]; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- details/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update champion details'
+            git push
+          fi
+      - name: Prepare public site
+        run: |
+          mkdir -p /tmp/rift-public
+          cp index.html champion.html data.json /tmp/rift-public/
+          for dir in icons assets details; do
+            if [ -d "$dir" ]; then cp -r "$dir" /tmp/rift-public/; fi
+          done
+          touch /tmp/rift-public/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/rift-public
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
